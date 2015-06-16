@@ -86,6 +86,7 @@ class DbPanel extends Panel
             'panel' => $this,
             'queryCount' => $queryCount,
             'queryTime' => $queryTime,
+            'hasExplain' => $this->hasExplain('mysql'),
         ]);
     }
 
@@ -101,7 +102,7 @@ class DbPanel extends Panel
             'panel' => $this,
             'dataProvider' => $dataProvider,
             'searchModel' => $searchModel,
-            'hasExplain' => $this->hasExplain()
+            'hasExplain' => $this->hasExplain('mysql')
         ]);
     }
 
@@ -170,11 +171,12 @@ class DbPanel extends Panel
             foreach ($timings as $seq => $dbTiming) {
                 $this->_models[] = [
                     'type' => $this->getQueryType($dbTiming['info']),
-                    'query' => $dbTiming['info'],
+                    'query' => $this->getQuery($dbTiming['info']),
                     'duration' => ($dbTiming['duration'] * 1000), // in milliseconds
                     'trace' => $dbTiming['trace'],
                     'timestamp' => ($dbTiming['timestamp'] * 1000), // in milliseconds
                     'seq' => $seq,
+                    'hasExplain' => $this->hasExplain($this->getDbDriver($dbTiming['info'])),
                 ];
             }
         }
@@ -228,9 +230,9 @@ class DbPanel extends Panel
     /**
      * @return boolean Whether the DB component has support for EXPLAIN queries
      */
-    protected function hasExplain()
+    protected function hasExplain($driverName)
     {
-        switch ($this->getDb()->getDriverName()) {
+        switch ($driverName) {
             case 'mysql':
             case 'sqlite':
             case 'pgsql':
@@ -243,11 +245,23 @@ class DbPanel extends Panel
 
     /**
      * Returns a reference to the DB component associated with the panel
-     * 
+     *
      * @return \yii\db\Connection
      */
     public function getDb()
     {
         return Yii::$app->get($this->db);
+    }
+
+    protected function getQuery($queryLog) {
+        return explode("###", $queryLog)[0];
+    }
+
+    protected function getDbDriver($queryLog) {
+        $queryArray = explode("###", $queryLog);
+        if (!empty($queryArray[1])) {
+            return $queryArray[1];
+        }
+        return null;
     }
 }
